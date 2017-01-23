@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Chat app</title>
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+	<!-- jQuery library -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+
+	<!-- Latest compiled JavaScript -->
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+	<style type="text/css">
+		#chat{
+			height:500px; 
+			border: 1px solid grey;
+			overflow-y: scroll;
+			position: relative;
+		}
+		#fullWrap{
+			display: none;
+		}
+		.error{
+			color:red;
+		}
+		.whisper{
+			color:grey;
+			font-style: italic;
+		}
+		#nickWrap{
+			margin-top: 200px;
+			margin-left: 200px;
+		}
+		.lefton{
+			padding-left: 50px;
+		}
+	</style>
+</head>
+<body>
+	<div id="nickWrap" class="col-md-8">
+		<p>Please set your Username:</p>
+		<div >
+		  <p id="nickError"></p>
+		</div>
+		<form id="setNick">
+			  <div class="form-group" >
+			    <input type="text" class="form-control" placeholder="Enter your Username" id="nickname" size="25" required="true">
+			  </div>
+			  	<button type="submit" class="btn btn-primary">Submit</button>
+			</form>
+	</div>
+	<div id="fullWrap">
+		<div class="text-center">
+			<h3 class="well">Chat Room</h3>
+			<div class="alert alert-info">
+			   <marquee>To send a secret message type: <strong>"/w username"</strong></marquee>
+			  </div>
+		</div>
+		
+		<div class="row" id="contentWrap">
+			<div class="col-md-4 lefton">
+				<form id="send-message">
+				  <div class="form-group" id="send-message">
+				    <input type="text" class="form-control" placeholder="Enter your message" id="message" size="25">
+				  </div>
+				  	<button type="submit" class="btn btn-primary">Send message</button>
+				</form>
+				<br>
+				<br>
+				<div id="user">
+					<strong>Online users:</strong>
+					<div id="users" >
+						
+					</div>
+				</div>
+			</div>
+			<div id="chat" class="col-md-8">
+				<p class="well">Chat-Box</p>
+			</div>
+		</div>
+
+	</div>
+
+	<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+	<script type="text/javascript">
+		jQuery(function($){
+			var socket=io.connect();
+			var $messageForm=$('#send-message');
+			var $messageBox=$('#message');
+			var $chat=$('#chat');
+			var $nickForm=$('#setNick');
+			var $nickError=$('#nickError');
+			var $nickBox=$('#nickname');
+			var $users=$('#users');
+
+			$nickForm.submit(function(e){
+				e.preventDefault();
+				socket.emit('new user',$nickBox.val(),function(data){
+					if(data){
+						$('#nickWrap').hide();
+						$('#fullWrap').show();
+					}
+					else{
+						$nickError.html("Username already taken");
+					}
+				});
+				$nickBox.val('');
+			});
+
+			socket.on('usernames',function(data){
+				var html='';
+				for(var i=0;i<data.length;i++){
+					html+=data[i]+'<br>';
+				}
+				$users.html(html);
+			});
+
+			$messageForm.submit(function(e){
+				e.preventDefault();
+				socket.emit('send message',$messageBox.val(),function(data){
+						$chat.append('<span class="error">'+data+'<br>');
+				});
+				$messageBox.val('');
+			});
+
+			socket.on('new message',function(data){
+				// $chat.append('<span class="glyphicon glyphicon-user"></span>'+' '+data.nick+':<br>'+<'span class="glyphicon glyphicon-envelope"></span>'+ ' '+data.msg + '<br>');
+				displayMsg(data);
+			});
+
+			function displayMsg(data){
+				$chat.append('<span class="glyphicon glyphicon-user"></span>'+' '+'<strong>'+data.nick+'</strong>'+':'+data.msg+'<br>');
+			}
+
+			socket.on('whisper',function(data){
+				$chat.append('<span class="whisper">'+data.nick+':'+data.msg+'</span><br>');
+			});
+
+			socket.on('old messages',function(docs){
+				for(var i=0;i<docs.length;i++){
+					displayMsg(docs[i]);
+				}
+			});
+			
+
+		});
+	</script>
+</body>
+</html>
